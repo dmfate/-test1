@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 import venv
@@ -31,6 +32,14 @@ def venv_python(venv_dir: Path) -> Path:
     return venv_dir / "bin" / "python"
 
 
+def valid_venv(venv_dir: Path) -> bool:
+    """
+    判断虚拟环境是否完整可用。
+    仅 python 可执行文件存在但 pyvenv.cfg 缺失时，视为损坏环境。
+    """
+    return (venv_dir / "pyvenv.cfg").is_file() and venv_python(venv_dir).is_file()
+
+
 def ensure_venv_and_reexec(argv: list[str], already_bootstrapped: bool) -> None:
     """
     保证使用仓库内 .venv 运行当前脚本。
@@ -40,17 +49,43 @@ def ensure_venv_and_reexec(argv: list[str], already_bootstrapped: bool) -> None:
     current_prefix = Path(getattr(sys, "prefix", ""))
     target_python = venv_python(VENV_DIR)
 
-    in_target_venv = current_prefix == VENV_DIR and Path(sys.executable).resolve() == target_python.resolve() if target_python.exists() else False
+    in_target_venv = (
+        valid_venv(VENV_DIR)
+        and current_prefix == VENV_DIR
+        and Path(sys.executable).resolve() == target_python.resolve()
+    )
 
     if in_target_venv or already_bootstrapped:
         return
 
-    if not target_python.exists():
+    if VENV_DIR.exists() and not valid_venv(VENV_DIR):
+        print(f"[BOOTSTRAP] 检测到损坏的虚拟环境，正在重建: {VENV_DIR}")
+        shutil.rmtree(VENV_DIR)
+
+    if not valid_venv(VENV_DIR):
         print(f"[BOOTSTRAP] 未检测到虚拟环境，正在创建: {VENV_DIR}")
         venv.create(VENV_DIR, with_pip=True)
+        target_python = venv_python(VENV_DIR)
 
     print("[BOOTSTRAP] 安装/更新依赖 requirements.txt ...")
-    subprocess.run([str(target_python), "-m", "pip", "install", "-r", "requirements.txt"], cwd=ROOT, check=True)
+    try:
+        subprocess.run(
+            [str(target_python), "-m", "pip", "install", "-r", "requirements.txt"],
+            cwd=ROOT,
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        # 兼容 Windows 上偶发 “No pyvenv.cfg file” 的损坏环境场景：重建后重试一次。
+        print("[BOOTSTRAP] 依赖安装失败，尝试重建 .venv 后重试一次。")
+        if VENV_DIR.exists():
+            shutil.rmtree(VENV_DIR)
+        venv.create(VENV_DIR, with_pip=True)
+        target_python = venv_python(VENV_DIR)
+        subprocess.run(
+            [str(target_python), "-m", "pip", "install", "-r", "requirements.txt"],
+            cwd=ROOT,
+            check=True,
+        )
 
     print("[BOOTSTRAP] 依赖就绪，切换到 .venv 继续执行。")
     new_argv = [str(target_python), __file__, *argv, "--_bootstrapped"]

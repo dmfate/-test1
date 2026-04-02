@@ -20,3 +20,8 @@ python one_click.py --mode full
 - `--use-cpu`：训练与评估强制 CPU
 - `--no-gui`：full 模式执行到评估后不打开 GUI
 - `--dry-run`：只打印执行步骤，不真正运行
+
+## 常见问题
+
+- 若在 Windows 遇到 `No pyvenv.cfg file`，通常是目录里有损坏的 `.venv`。
+  新版脚本会自动检测并重建 `.venv`；如仍失败，可手动删除项目根目录下 `.venv` 后重试。
