@@ -1,6 +1,8 @@
 # GIS 局部放电诊断项目
 
-## 一键启动
+## 真·一键启动（无需手动进虚拟环境）
+
+> 直接运行下面命令即可：脚本会自动创建 `.venv`、自动安装依赖、自动启动。
 
 ### 仅启动 GUI（默认）
 ```bash
@@ -17,3 +19,4 @@ python one_click.py --mode full
 - `--batch-size 32`：训练 batch 大小
 - `--use-cpu`：训练与评估强制 CPU
 - `--no-gui`：full 模式执行到评估后不打开 GUI
+- `--dry-run`：只打印执行步骤，不真正运行
