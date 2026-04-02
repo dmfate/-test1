@@ -2,11 +2,7 @@
 # 主程序入口文件
 # 负责启动PyQt应用，协调各模块之间的交互
 
-import pandas as pd  # <--- 【新增这一行】：必须放在 PySide6 导入之前
 import sys
-import os
-import pandas as pd
-import matplotlib.pyplot as plt
 from PySide6.QtWidgets import QApplication
 
 def main():
